@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockMaster — Inventory Management</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #222; }
+
+    /* Layout */
+    #app { display: flex; min-height: 100vh; }
+    #sidebar { width: 220px; background: #1a2332; color: #cdd7e5; padding: 0; flex-shrink: 0; }
+    #sidebar h1 { padding: 20px 16px; font-size: 18px; color: #fff; border-bottom: 1px solid #2d3d52; }
+    #sidebar h1 span { color: #4da3ff; }
+    #sidebar nav a {
+      display: block; padding: 12px 20px; color: #cdd7e5; text-decoration: none;
+      font-size: 14px; border-left: 3px solid transparent; transition: all .2s;
+    }
+    #sidebar nav a:hover, #sidebar nav a.active {
+      background: #243447; border-left-color: #4da3ff; color: #fff;
+    }
+    #main { flex: 1; display: flex; flex-direction: column; }
+    #topbar { background: #fff; padding: 14px 24px; border-bottom: 1px solid #e0e4ea;
+      display: flex; align-items: center; justify-content: space-between; }
+    #topbar h2 { font-size: 18px; color: #333; }
+    #topbar .badge { background: #e8f4ff; color: #1a6fc4; padding: 4px 10px;
+      border-radius: 12px; font-size: 12px; }
+    #content { padding: 24px; flex: 1; }
+
+    /* Cards */
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 8px; padding: 18px; border-left: 4px solid #4da3ff; }
+    .stat-card h3 { font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 6px; }
+    .stat-card .val { font-size: 26px; font-weight: 700; color: #222; }
+    .stat-card.red { border-left-color: #e54; }
+    .stat-card.green { border-left-color: #2ecc71; }
+    .stat-card.orange { border-left-color: #f39c12; }
+
+    /* Tables */
+    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .card-header h3 { font-size: 15px; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f7f8fb; text-align: left; padding: 10px 12px; font-weight: 600;
+      color: #555; border-bottom: 2px solid #eee; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+    tr:hover td { background: #f9fbff; }
+    .badge-cat { background: #e8f4ff; color: #1a6fc4; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+    .stock-low { color: #e54; font-weight: 600; }
+    .stock-ok  { color: #27ae60; }
+
+    /* Buttons */
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; }
+    .btn-primary { background: #4da3ff; color: #fff; }
+    .btn-primary:hover { background: #2a8af0; }
+    .btn-danger { background: #fff0ef; color: #e54; border: 1px solid #fcc; }
+    .btn-danger:hover { background: #ffe0de; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-success { background: #eafaf1; color: #27ae60; border: 1px solid #b2dfdb; }
+
+    /* Forms */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 12px; color: #666; font-weight: 600; }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 100%;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: #4da3ff; }
+    .form-full { grid-column: 1 / -1; }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 10px; padding: 24px; width: 520px; max-height: 90vh; overflow-y: auto; }
+    .modal h3 { margin-bottom: 18px; font-size: 16px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: #333; color: #fff;
+      padding: 12px 20px; border-radius: 8px; font-size: 13px; display: none; z-index: 999;
+      max-width: 300px; }
+    #toast.success { background: #27ae60; }
+    #toast.error   { background: #e54; }
+
+    /* Tab */
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+    .tab { padding: 10px 18px; cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent;
+      margin-bottom: -2px; color: #666; font-weight: 500; }
+    .tab.active { border-bottom-color: #4da3ff; color: #4da3ff; }
+
+    /* Misc */
+    .empty { text-align: center; padding: 40px; color: #aaa; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .adj-IN  { color: #27ae60; font-weight: 600; }
+    .adj-OUT { color: #e54;    font-weight: 600; }
+    .adj-SET { color: #f39c12; font-weight: 600; }
+    #loader { display: none; position: fixed; top: 0; left: 0; right: 0; height: 3px; background: #4da3ff; animation: slide 1.2s infinite; }
+    @keyframes slide { 0%{width:0%} 50%{width:70%} 100%{width:100%} }
+  </style>
+</head>
+<body>
+<div id="loader"></div>
+<div id="app">
+  <div id="sidebar">
+    <h1>Stock<span>Master</span></h1>
+    <nav>
+      <a href="#" class="active" data-section="dashboard">📊 Dashboard</a>
+      <a href="#" data-section="products">📦 Products</a>
+      <a href="#" data-section="inventory">🔄 Adjustments</a>
+      <a href="#" data-section="reports">📈 Reports</a>
+      <a href="#" data-section="audit">🔒 Audit Logs</a>
+      <a href="#" data-section="notifications">🔔 Notifications</a>
+    </nav>
+  </div>
+  <div id="main">
+    <div id="topbar">
+      <h2 id="page-title">Dashboard</h2>
+      <span class="badge" id="health-badge">Checking...</span>
+    </div>
+    <div id="content">
+
+      <!-- DASHBOARD -->
+      <div class="section active" id="sec-dashboard">
+        <div class="stat-row" id="stat-row">
+          <div class="stat-card"><h3>Total Products</h3><div class="val" id="stat-products">—</div></div>
+          <div class="stat-card green"><h3>Total Units</h3><div class="val" id="stat-units">—</div></div>
+          <div class="stat-card orange"><h3>Inventory Value</h3><div class="val" id="stat-value">—</div></div>
+          <div class="stat-card red"><h3>Low Stock Items</h3><div class="val" id="stat-low">—</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>⚠️ Low Stock Alerts</h3></div>
+          <table><thead><tr><th>Product</th><th>SKU</th><th>Stock</th><th>Min Level</th></tr></thead>
+          <tbody id="low-stock-table"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <!-- PRODUCTS -->
+      <div class="section" id="sec-products">
+        <div class="card">
+          <div class="card-header">
+            <h3>Product List</h3>
+            <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
+          </div>
+          <table>
+            <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Min</th><th>Actions</th></tr></thead>
+            <tbody id="products-table"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- INVENTORY ADJUSTMENTS -->
+      <div class="section" id="sec-inventory">
+        <div class="card">
+          <div class="card-header"><h3>Stock Adjustment</h3></div>
+          <div class="form-grid" style="max-width:480px;margin-bottom:16px">
+            <div class="form-group">
+              <label>Product</label>
+              <select id="adj-product"></select>
+            </div>
+            <div class="form-group">
+              <label>Type</label>
+              <select id="adj-type">
+                <option value="IN">IN (Restock)</option>
+                <option value="OUT">OUT (Dispatch)</option>
+                <option value="SET">SET (Override)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Quantity</label>
+              <input type="number" id="adj-qty" min="1" value="1">
+            </div>
+            <div class="form-group">
+              <label>Notes</label>
+              <input type="text" id="adj-notes" placeholder="Optional notes">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="doAdjust()">Apply Adjustment</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Adjustment History</h3></div>
+          <table>
+            <thead><tr><th>Time</th><th>Product</th><th>Type</th><th>Before</th><th>After</th><th>Notes</th></tr></thead>
+            <tbody id="adj-table"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REPORTS -->
+      <div class="section" id="sec-reports">
+        <div class="card">
+          <div class="card-header">
+            <h3>Inventory Summary Report</h3>
+            <button class="btn btn-primary" onclick="loadReport()">🔄 Refresh & Save to S3</button>
+          </div>
+          <div id="report-content" class="empty">Click "Refresh" to generate report</div>
+        </div>
+      </div>
+
+      <!-- AUDIT LOGS -->
+      <div class="section" id="sec-audit">
+        <div class="card">
+          <div class="card-header">
+            <h3>DynamoDB Audit Log</h3>
+            <button class="btn btn-primary btn-sm" onclick="loadAudit()">🔄 Refresh</button>
+          </div>
+          <table>
+            <thead><tr><th>Time</th><th>Action</th><th>User</th><th>Details</th></tr></thead>
+            <tbody id="audit-table"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- NOTIFICATIONS -->
+      <div class="section" id="sec-notifications">
+        <div class="card">
+          <div class="card-header"><h3>Send SNS Notification</h3></div>
+          <div class="form-grid" style="max-width:480px;margin-bottom:16px">
+            <div class="form-group form-full">
+              <label>Subject</label>
+              <input type="text" id="notif-subject" placeholder="Alert subject" value="[StockMaster] Test Alert">
+            </div>
+            <div class="form-group form-full">
+              <label>Message</label>
+              <textarea id="notif-msg" rows="4" placeholder="Message body">This is a test notification from StockMaster.</textarea>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="sendNotification()">Send Notification</button>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </div><!-- main -->
+</div><!-- app -->
+
+<!-- Product Modal -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal">
+    <h3 id="modal-title">Add Product</h3>
+    <input type="hidden" id="modal-product-id">
+    <div class="form-grid">
+      <div class="form-group"><label>Name *</label><input type="text" id="p-name"></div>
+      <div class="form-group"><label>SKU *</label><input type="text" id="p-sku"></div>
+      <div class="form-group"><label>Category</label>
+        <select id="p-category">
+          <option>General</option><option>Electronics</option><option>Furniture</option>
+          <option>Stationery</option><option>Apparel</option><option>Food</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Price</label><input type="number" id="p-price" step="0.01" min="0"></div>
+      <div class="form-group"><label>Initial Stock</label><input type="number" id="p-stock" min="0"></div>
+      <div class="form-group"><label>Min Stock Level</label><input type="number" id="p-minstock" min="0"></div>
+      <div class="form-group form-full"><label>Description</label><textarea id="p-desc" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="/js/app.js"></script>
+</body>
+</html>

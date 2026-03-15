@@ -1,0 +1,6 @@
+.env
+
+.terraform/
+.terraform*
+
+package-lock.json
